@@ -1,8 +1,6 @@
 /*
 TODOS:
-Array of commands that is printed out on interrupt
-Built in shell commands (cd, env, amp, etc.)
-
+Built in shell commands (cd, env, amp, etc.) Should be very easy
 Argument parsing & handling
   - Function that determines what to run that is itself run in every process?
   - Parsing through and setting indicators to true / false and labeling tokens
@@ -11,6 +9,7 @@ Argument parsing & handling
 /*
 FOR FUNSIES:
 Make this thing really powerful. This could be a cool project. Maybe even make a Windows CP Emulator from it.
+Increase efficiencey 10x. There's a better parsing algorithm out there
 */
 
 
@@ -23,9 +22,10 @@ Sources:
 3) Mr. Ritter's "Babyshell"
 4) Help from http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html, https://www.geeksforgeeks.org/c-program-demonstrate-fork-and-pipe/, 
    http://www.microhowto.info/howto/capture_the_output_of_a_child_process_in_c.html, http://heapspray.net/post/redirect-stdout-of-child-to-parent-process-in-c/
+5) Circular Buffer Adapted From: http://www.equestionanswers.com/c/c-circular-buffer.php
 */
 
-#include <stdio.h>
+#include <stdio.h> //All necessary libraries
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -37,13 +37,12 @@ Sources:
 #include "vector.h"
 
 
-void vector_init(vector *v)
+void vector_init(vector *v) //Vector code--useful for reading in lines
 {
 	v->data = NULL;
 	v->size = 0;
 	v->count = 0;
 }
-
 int vector_count(vector *v)
 {
 	return v->count;
@@ -114,10 +113,11 @@ void vector_free(vector *v)
 	free(v->data);
 }
 
-vector history;
+char history[30][256]; //History variables, created here so the signal handler can use them.
+int run_count = 0;
+int loop = 0;
 
-
-void handle_sig(int sig) //FIX: SIGUSR1, PRINTING OF VALUES ON EXIT
+void handle_sig(int sig) //Signal handler, handles CTRL + C & SIGUSR1
 {
   if(sig == SIGINT)
   {
@@ -128,10 +128,17 @@ void handle_sig(int sig) //FIX: SIGUSR1, PRINTING OF VALUES ON EXIT
   if(sig == SIGUSR1)
   {
     printf("\nCAUGHT SIGUSR1\n");
-    for (int i = 0; i < vector_count(&history); i++)
+    {
+      for(int i = run_count; i < 30*loop; i++)
       {
-        printf("%s\n", vector_get(&history, i));
+      printf("History %d: %s\n", i, history[i]);
       }
+
+      for(int i = 0; i < run_count; i++)
+      {
+        printf("History %d: %s\n", i+(30*loop), history[i]);
+      }
+    }
     exit(0);
   }
 }
@@ -139,34 +146,42 @@ void handle_sig(int sig) //FIX: SIGUSR1, PRINTING OF VALUES ON EXIT
 int main()
 {
 
-  signal(SIGINT, handle_sig);
+  signal(SIGINT, handle_sig); //Setting up of signal handlers
+  signal(SIGUSR1, handle_sig);
 
-  pid_t pid;
-  char *prompt = "BRADv3> ";
+  char *prompt = "BRADv3> "; //Parsing variables
   char line[256];
   int p[2];
-  int bytes;
-
+  int token_count = 0;
   vector v_line;
+  int p_true, app, redir, read, read_pipe, read_redir, amp;
 
+  pid_t pid; //Forking & Piping Variables
   int in, out;
 
-  int p_true, app, redir, read, read_pipe, read_redir, amp;
 
   fprintf(stderr,"%s",prompt);
   while ( scanf ("%[^\n]%*c",line) != EOF )
-    {
-      vector_add(&history, line);
+    { 
+      strcpy(history[run_count], line); //History record, max up to 30, circular buffer
+      run_count++;
+      if(run_count == 30)
+      {
+        run_count = 0;
+        loop++;
+      }
 
-      vector_free(&v_line);
-      vector_init(&v_line);
+      vector_init(&v_line); //Recording of line, divvying up into tokens and kept in vector.
       vector_add(&v_line, strtok(line, " ,."));
       char * token = "";
       while(token != NULL)
       {
         token = strtok(NULL, " ,.");
         vector_add(&v_line, token);
+        token_count++;
       }
+      
+      //Logic handler of commands
 
       /*
       Loop Pseudo Code
@@ -195,20 +210,10 @@ int main()
         if array_last_elem = &:
           amp = 1
       */
-
-      //For testing purposes
-      char *test_ls_arg[] = {"ls", NULL};
-      char *test_wc_arg[] = {"wc", "-l", NULL};
-      char *filename = "testfile";
       
-      if(pipe(p) < 0)
-      { 
-        exit(1);
-      }
-
-      if(0) //Standard commands
+      if(0) //DEBUG: Standard Process Creation
       {
-        switch(pid = fork())
+        switch(pid = fork()) 
         {
           case 0:
             execvp("ls", test_ls_arg);
@@ -222,14 +227,14 @@ int main()
         }
       }
 
-      if(0) //WORKING pipe code
+      if(0) //DEBUG: Piping
       {
         pipe(p); //One pipe, parent controls between the two
 
         switch(pid=fork()) //1st child
         {
-          case 0: //ls process
-            close(p[0]); //no nead to read, just writes to his pipe.
+          case 0: //Left process
+            close(p[0]); //no need to read, just writes to its pipe.
             dup2(p[1], STDOUT_FILENO);
             close(p[1]);
             fprintf(stderr, "ABOUT TO RUN LS!\n");
@@ -245,9 +250,9 @@ int main()
 
         switch(pid = fork()) //Start second process
         {
-          case 0: //wc -l
+          case 0: //Right process
             close(p[1]);
-            dup2(p[0], STDIN_FILENO); //Reads from his pipe
+            dup2(p[0], STDIN_FILENO); //Reads from its pipe
             close(p[0]);
             fprintf(stderr, "ABOUT TO RUN WC -L!\n");
             execvp("wc", test_wc_arg);
@@ -260,21 +265,21 @@ int main()
             break;
         }
         
-        close(p[0]);
+        close(p[0]); //Parent handles pipes
         close(p[1]);
-        if(!amp)
+        if(!amp) //Active command vs. run in background
         {
           wait(NULL);
           wait(NULL);
         }
       }
 
-      if(0) //WORKING redirect code
+      if(0) //DEBUG: Redirection
       {
         switch(pid = fork())
         {
           case 0:
-             out = open("test", O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //check permissions
+             out = open("test", O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
              dup2(out, STDOUT_FILENO);
              close(out);
              execvp("ls", test_ls_arg);
@@ -293,12 +298,12 @@ int main()
         }
       }
 
-      if(0) //WORKING read code
+      if(0) //DEBUG: Read
       {
         switch(pid = fork())
         {
           case 0:
-             in = open("test", O_RDONLY); //Check permissions
+             in = open("test", O_RDONLY);
              dup2(in, STDIN_FILENO);
              close(in);
              execvp("wc", test_wc_arg);
@@ -317,12 +322,12 @@ int main()
         }
       }
 
-      if(0) //WORKING append code
+      if(0) //DEBUG: Append
       {
         switch(pid = fork())
         {
           case 0:
-             out = open("test", O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //Check permisions
+             out = open("test", O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
              dup2(out, STDOUT_FILENO);
              close(out);
              execvp("ls" , test_ls_arg);
@@ -341,7 +346,7 @@ int main()
         }
       }
 
-      if(0) //WORKING redirect AND read code
+      if(0) //DEBUG: Read & Redirect
       {
         switch(pid = fork())
         {
@@ -367,20 +372,8 @@ int main()
         }
       }
 
-      if(0) //WORKING system commands (built-in)
-      {
-        system("ls");
-      }
-
-      if(0) //SKELETON history command
-      {
-       for (int i = 0; i < vector_count(&history); i++)
-        {
-		      printf("%s\n", vector_get(&history, i));
-	      } 
-      }
-
       fprintf(stderr,"%s",prompt); 
+      token_count = 0;
     }
   exit(0);
 }
