@@ -9,7 +9,7 @@ Argument parsing & handling
 /*
 FOR FUNSIES:
 Make this thing really powerful. This could be a cool project. Maybe even make a Windows CP Emulator from it.
-Increase efficiencey 10x. There's a better parsing algorithm out there
+Increase efficiency 10x. There's a better parsing algorithm out there
 */
 
 
@@ -36,82 +36,6 @@ Sources:
 #include <sys/stat.h>
 #include "vector.h"
 
-
-void vector_init(vector *v) //Vector code--useful for reading in lines
-{
-	v->data = NULL;
-	v->size = 0;
-	v->count = 0;
-}
-int vector_count(vector *v)
-{
-	return v->count;
-}
-
-void vector_add(vector *v, void *e)
-{
-	if (v->size == 0) {
-		v->size = 10;
-		v->data = malloc(sizeof(void*) * v->size);
-		memset(v->data, '\0', sizeof(void) * v->size);
-	}
-
-	// condition to increase v->data:
-	// last slot exhausted
-	if (v->size == v->count) {
-		v->size *= 2;
-		v->data = realloc(v->data, sizeof(void*) * v->size);
-	}
-
-	v->data[v->count] = e;
-	v->count++;
-}
-
-void vector_set(vector *v, int index, void *e)
-{
-	if (index >= v->count) {
-		return;
-	}
-
-	v->data[index] = e;
-}
-
-void *vector_get(vector *v, int index)
-{
-	if (index >= v->count) {
-		return NULL;
-	}
-
-	return v->data[index];
-}
-
-void vector_delete(vector *v, int index)
-{
-	if (index >= v->count) {
-		return;
-	}
-
-	v->data[index] = NULL;
-
-	int i, j;
-	void **newarr = (void**)malloc(sizeof(void*) * v->count * 2);
-	for (i = 0, j = 0; i < v->count; i++) {
-		if (v->data[i] != NULL) {
-			newarr[j] = v->data[i];
-			j++;
-		}		
-	}
-
-	free(v->data);
-
-	v->data = newarr;
-	v->count--;
-}
-
-void vector_free(vector *v)
-{
-	free(v->data);
-}
 
 char history[30][256]; //History variables, created here so the signal handler can use them.
 int run_count = 0;
@@ -153,8 +77,9 @@ int main()
   char line[256];
   int p[2];
   int token_count = 0;
-  vector v_line;
-  int p_true, app, redir, read, read_pipe, read_redir, amp;
+  char *argv_l[10];
+  char *argv_r[10];
+  int p_true, append, redir, read, read_pipe, read_redir, amp, norm, pci, pipe_to;
 
   pid_t pid; //Forking & Piping Variables
   int in, out;
@@ -163,6 +88,7 @@ int main()
   fprintf(stderr,"%s",prompt);
   while ( scanf ("%[^\n]%*c",line) != EOF )
     { 
+      char v_line[10][256];
       strcpy(history[run_count], line); //History record, max up to 30, circular buffer
       run_count++;
       if(run_count == 30)
@@ -171,18 +97,62 @@ int main()
         loop++;
       }
 
-      vector_init(&v_line); //Recording of line, divvying up into tokens and kept in vector.
-      vector_add(&v_line, strtok(line, " ,."));
+
       char * token = "";
+      strcpy(v_line[0], strtok(line, " ,."));
       while(token != NULL)
-      {
+      { 
         token = strtok(NULL, " ,.");
-        vector_add(&v_line, token);
+        if(token != NULL)
+        {
+          strcpy(v_line[token_count+1], token);
+        }
         token_count++;
       }
       
       //Logic handler of commands
+      pci = 0;
+      for(int i = 0; i < token_count; i++) //Walk through every token
+      {
 
+        if(!strncmp(v_line[i], "|", 256)) //Found a pipe
+        {
+          p_true = 1;
+          pipe_to = i+1;
+
+          int k = pci;
+          int l = 0;
+          char argv[10][256];
+          for(int j = 0; j < pipe_to - pci - 1; j++) //Grab everything before the pipe
+            {
+              strcpy(argv[l], v_line[k]);
+              k++;
+              l++;
+            }
+
+          for(int m = 0; m < l; m++){argv_l[m] = argv[m];} //Assign left arguments
+          argv_l[l] = NULL;
+          pci = i;
+
+          char argv_2[10][256];
+          l = 0;
+          fprintf(stderr, "%d", token_count);
+          for(int j = pci+1; j < token_count; j++) //Grab everything after the pipe
+            {
+              strcpy(argv_2[l], v_line[j]);
+              fprintf(stderr, "%s\n", argv_2[l]);
+              strcpy(v_line[j], "");
+              l++;
+            }
+          
+          for(int m = 0; m < l; m++){argv_r[m] = argv_2[m]; fprintf(stderr, "Token: %s\n", argv_r[m]);} //Assign right arguments
+          argv_r[l] = NULL;
+        }
+
+        
+      } //This needs to be moved down to include everything. Walk through every if every time.
+
+      
       /*
       Loop Pseudo Code
       for(word in token)
@@ -211,12 +181,12 @@ int main()
           amp = 1
       */
       
-      if(0) //DEBUG: Standard Process Creation
+      if(norm) //DEBUG: Standard Process Creation
       {
         switch(pid = fork()) 
         {
           case 0:
-            execvp("ls", test_ls_arg);
+            //execvp("ls", test_ls_arg);
             exit(1);
           
           case -1: fprintf(stderr, "ERROR CAN'T CREATE CHILD PROCESS\n");
@@ -227,7 +197,7 @@ int main()
         }
       }
 
-      if(0) //DEBUG: Piping
+      if(1) //DEBUG: Piping
       {
         pipe(p); //One pipe, parent controls between the two
 
@@ -237,8 +207,8 @@ int main()
             close(p[0]); //no need to read, just writes to its pipe.
             dup2(p[1], STDOUT_FILENO);
             close(p[1]);
-            fprintf(stderr, "ABOUT TO RUN LS!\n");
-            execvp("ls" , test_ls_arg);
+            fprintf(stderr, "ABOUT TO RUN %s\n", argv_l[0]);
+            execvp(argv_l[0], argv_l);
             exit(1);
 
           case -1: fprintf(stderr, "ERROR CAN'T CREATE CHILD PROCESS\n");
@@ -254,8 +224,7 @@ int main()
             close(p[1]);
             dup2(p[0], STDIN_FILENO); //Reads from its pipe
             close(p[0]);
-            fprintf(stderr, "ABOUT TO RUN WC -L!\n");
-            execvp("wc", test_wc_arg);
+            execvp(argv_r[0], argv_r);
             exit(1);
 
           case -1: fprintf(stderr, "ERROR can't create child process\n");
@@ -282,7 +251,7 @@ int main()
              out = open("test", O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
              dup2(out, STDOUT_FILENO);
              close(out);
-             execvp("ls", test_ls_arg);
+             //execvp("ls", test_ls_arg);
              exit(1);
              break;
 
@@ -306,7 +275,7 @@ int main()
              in = open("test", O_RDONLY);
              dup2(in, STDIN_FILENO);
              close(in);
-             execvp("wc", test_wc_arg);
+             //execvp("wc", test_wc_arg);
              exit(1);
              break;
 
@@ -330,7 +299,7 @@ int main()
              out = open("test", O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
              dup2(out, STDOUT_FILENO);
              close(out);
-             execvp("ls" , test_ls_arg);
+             //execvp("ls" , test_ls_arg);
              exit(1);
              break;
 
@@ -357,7 +326,7 @@ int main()
             dup2(out, STDOUT_FILENO);
             close(in);
             close(out);
-            execvp("wc" , test_wc_arg);
+            //execvp("wc" , test_wc_arg);
             break;
           
           case -1: fprintf(stderr,"ERROR can't create child process!\n");
