@@ -4,14 +4,24 @@ Built in shell commands (cd, env, amp, etc.) Should be very easy
 Argument parsing & handling
   - Function that determines what to run that is itself run in every process?
   - Parsing through and setting indicators to true / false and labeling tokens
+Error handling
 */
 
 /*
 FOR FUNSIES:
 Make this thing really powerful. This could be a cool project. Maybe even make a Windows CP Emulator from it.
 Increase efficiency 10x. There's a better parsing algorithm out there
+Up arrow to display history
+Make this thing less hard coded
 */
 
+/*
+MISC Error Log:
+Redirect not overwriting files, tweak permissions
+General cleanup & consistency, esp variables0
+Change printf to fprintf
+
+*/
 
 /*
 Brady Kruse
@@ -73,13 +83,15 @@ int main()
   signal(SIGINT, handle_sig); //Setting up of signal handlers
   signal(SIGUSR1, handle_sig);
 
-  char *prompt = "BRADv3> "; //Parsing variables
+  char *prompt = "BRADv4> "; //Parsing variables
   char line[256];
   int p[2];
   int token_count = 0;
   char *argv_l[10];
   char *argv_r[10];
-  int p_true, append, redir, read, read_pipe, read_redir, amp, norm, pci, pipe_to;
+  char *redir_file;
+  char *read_file;
+  int p_true, append, redir, s_read, read_pipe, read_redir, amp, norm, pci, pipe_redir, pipe_append, current_tok;
 
   pid_t pid; //Forking & Piping Variables
   int in, out;
@@ -112,14 +124,15 @@ int main()
       
       //Logic handler of commands
       pci = 0;
-      for(int i = 0; i < token_count; i++) //Walk through every token
+      current_tok = 0;
+      while(current_tok != token_count) //Walk through every token
       {
 
-        if(!strncmp(v_line[i], "|", 256)) //Found a pipe
+        if(!strncmp(v_line[current_tok], "|", 256)) //Found a pipe
         {
           p_true = 1;
-          pipe_to = i+1;
 
+          int pipe_to = current_tok+1;
           int k = pci;
           int l = 0;
           char argv[10][256];
@@ -129,26 +142,139 @@ int main()
               k++;
               l++;
             }
-
           for(int m = 0; m < l; m++){argv_l[m] = argv[m];} //Assign left arguments
           argv_l[l] = NULL;
-          pci = i;
+          pci = l;
+
 
           char argv_2[10][256];
           l = 0;
-          fprintf(stderr, "%d", token_count);
           for(int j = pci+1; j < token_count; j++) //Grab everything after the pipe
             {
+              if(!strncmp(v_line[j], ">", 256)) //Check for redirection
+                {
+                  pipe_redir = 1;
+                  redir_file = v_line[j+1];
+                  pci = j;
+                  current_tok = j+1;
+                  break;
+                }
+
+              if(!strncmp(v_line[j], ">>", 256)) //Check for appending
+                {
+                  pipe_append = 1;
+                  redir_file = v_line[j+1];
+                  pci = j;
+                  current_tok = j+1;
+                  break;
+                }
+
               strcpy(argv_2[l], v_line[j]);
-              fprintf(stderr, "%s\n", argv_2[l]);
-              strcpy(v_line[j], "");
               l++;
             }
           
-          for(int m = 0; m < l; m++){argv_r[m] = argv_2[m]; fprintf(stderr, "Token: %s\n", argv_r[m]);} //Assign right arguments
+          for(int m = 0; m < l; m++){argv_r[m] = argv_2[m];} //Assign right arguments
           argv_r[l] = NULL;
+          current_tok += l;
         }
 
+        else if(!strncmp(v_line[current_tok], ">", 256)) //Found a redirect
+        {
+          redir = 1;
+          int redir_to = current_tok+1;
+          int k = pci;
+          int l = 0;
+          char argv[10][256];
+          for(int j = 0; j < redir_to - pci - 1; j++) //Grab everything before redirect
+            {
+              strcpy(argv[l], v_line[k]);
+              k++;
+              l++;
+            }
+          for(int m = 0; m < l; m++){argv_l[m] = argv[m];} //Assign left arguments
+          argv_l[l] = NULL;
+          pci = l;
+
+          redir_file = v_line[redir_to];
+          current_tok++;
+        }
+
+        else if(!strncmp(v_line[current_tok], ">>", 256)) //Found an append
+        {
+          append = 1;
+          int append_to = current_tok+1;
+          int k = pci;
+          int l = 0;
+          char argv[10][256];
+          for(int j = 0; j < append_to - pci - 1; j++) //Grab everything before redirect
+            {
+              strcpy(argv[l], v_line[k]);
+              k++;
+              l++;
+            }
+          for(int m = 0; m < l; m++){argv_l[m] = argv[m];} //Assign left arguments
+          argv_l[l] = NULL;
+          pci = l;
+
+          redir_file = v_line[append_to];
+          current_tok++;
+        }
+
+        else if(!strncmp(v_line[current_tok], "<", 256)) //Found a read
+        {
+          read = 1;
+          int read_from = current_tok+1;
+          int k = pci;
+          int l = 0;
+          char argv[10][256];
+          for(int j = 0; j < read_from - pci - 1; j++) //Grab everything before read
+            {
+              strcpy(argv[l], v_line[k]);
+              k++;
+              l++;
+            }
+          for(int m = 0; m < l; m++){argv_l[m] = argv[m];} //Assign left arguments
+          argv_l[l] = NULL;
+          pci = l;
+
+          read_file = v_line[read_from];
+
+          char argv_2[10][256];
+          l = 0;
+          for(int j = pci+1; j < token_count; j++) //Grab everything after the read
+            {
+              if(!strncmp(v_line[j], ">", 256)) //Check for redirection
+                {
+                  read_redir = 1;
+                  redir_file = v_line[j+1];
+                  pci = j;
+                  current_tok = j+1;
+                  break;
+                }
+
+              if(!strncmp(v_line[j], ">>", 256)) //Check for appending
+                {
+                  read_append = 1;
+                  redir_file = v_line[j+1];
+                  pci = j;
+                  current_tok = j+1;
+                  break;
+                }
+
+              strcpy(argv_2[l], v_line[j]);
+              l++;
+            }
+          
+          for(int m = 0; m < l; m++){argv_r[m] = argv_2[m];} //Assign right arguments
+          argv_r[l] = NULL;
+          current_tok += l;
+        }
+
+        else{
+          current_tok++; //ERROR: This needs to be changed
+        }
+        
+        
         
       } //This needs to be moved down to include everything. Walk through every if every time.
 
@@ -197,8 +323,9 @@ int main()
         }
       }
 
-      if(1) //DEBUG: Piping
-      {
+      if(p_true) //DEBUG: Piping
+      { 
+        p_true = 0;
         pipe(p); //One pipe, parent controls between the two
 
         switch(pid=fork()) //1st child
@@ -207,7 +334,6 @@ int main()
             close(p[0]); //no need to read, just writes to its pipe.
             dup2(p[1], STDOUT_FILENO);
             close(p[1]);
-            fprintf(stderr, "ABOUT TO RUN %s\n", argv_l[0]);
             execvp(argv_l[0], argv_l);
             exit(1);
 
@@ -224,6 +350,19 @@ int main()
             close(p[1]);
             dup2(p[0], STDIN_FILENO); //Reads from its pipe
             close(p[0]);
+            if(pipe_redir)
+            {
+              out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+              dup2(out, STDOUT_FILENO);
+              close(out);
+            }
+
+            if(pipe_append)
+            {
+              out = open(redir_file, O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+              dup2(out, STDOUT_FILENO);
+              close(out);
+            }
             execvp(argv_r[0], argv_r);
             exit(1);
 
@@ -243,15 +382,16 @@ int main()
         }
       }
 
-      if(0) //DEBUG: Redirection
-      {
+      if(redir) //DEBUG: Redirection
+      { 
+        redir = 0;
         switch(pid = fork())
         {
           case 0:
-             out = open("test", O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+             out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
              dup2(out, STDOUT_FILENO);
              close(out);
-             //execvp("ls", test_ls_arg);
+             execvp(argv_l[0], argv_l);
              exit(1);
              break;
 
@@ -267,15 +407,40 @@ int main()
         }
       }
 
-      if(0) //DEBUG: Read
+      if(append) //DEBUG: Append
+      {
+        append = 0;
+        switch(pid = fork())
+        {
+          case 0:
+             out = open(redir_file, O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+             dup2(out, STDOUT_FILENO);
+             close(out);
+             execvp(argv_l[0] , argv_l);
+             exit(1);
+             break;
+
+          case -1: fprintf(stderr,"ERROR can't create child process!\n");
+            break;
+
+          default:
+            if(!amp)
+              {
+              wait(NULL);
+              }
+            break;
+        }
+      }
+
+      if(s_read) //DEBUG: Simple Read
       {
         switch(pid = fork())
         {
           case 0:
-             in = open("test", O_RDONLY);
+             in = open(read_file, O_RDONLY);
              dup2(in, STDIN_FILENO);
              close(in);
-             //execvp("wc", test_wc_arg);
+             execvp(argv_l[0], argv_l);
              exit(1);
              break;
 
@@ -291,31 +456,7 @@ int main()
         }
       }
 
-      if(0) //DEBUG: Append
-      {
-        switch(pid = fork())
-        {
-          case 0:
-             out = open("test", O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
-             dup2(out, STDOUT_FILENO);
-             close(out);
-             //execvp("ls" , test_ls_arg);
-             exit(1);
-             break;
-
-          case -1: fprintf(stderr,"ERROR can't create child process!\n");
-            break;
-
-          default:
-            if(!amp)
-              {
-              wait(NULL);
-              }
-            break;
-        }
-      }
-
-      if(0) //DEBUG: Read & Redirect
+      if(0) //DEBUG: Read, Redirect
       {
         switch(pid = fork())
         {
@@ -340,6 +481,7 @@ int main()
             break;
         }
       }
+
 
       fprintf(stderr,"%s",prompt); 
       token_count = 0;
