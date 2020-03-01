@@ -1,10 +1,11 @@
 /*
 TODOS:
 Array of commands that is printed out on interrupt
-SIGUSR1 Interrupt Handling
-Built in shell commands
+Built in shell commands (cd, env, amp, etc.)
+
 Argument parsing & handling
   - Function that determines what to run that is itself run in every process?
+  - Parsing through and setting indicators to true / false and labeling tokens
 */
 
 /*
@@ -20,6 +21,8 @@ Sources:
 1) Vector Implementation: https://gist.github.com/EmilHernvall/953968/0fef1b1f826a8c3d8cfb74b2915f17d2944ec1d0
 2) Redirect Skeleton Code: http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html
 3) Mr. Ritter's "Babyshell"
+4) Help from http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html, https://www.geeksforgeeks.org/c-program-demonstrate-fork-and-pipe/, 
+   http://www.microhowto.info/howto/capture_the_output_of_a_child_process_in_c.html, http://heapspray.net/post/redirect-stdout-of-child-to-parent-process-in-c/
 */
 
 #include <stdio.h>
@@ -28,11 +31,10 @@ Sources:
 #include <string.h>
 #include <memory.h>
 #include <stdbool.h>
-#include "vector.h"
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <signal.h>
+#include "vector.h"
 
 
 void vector_init(vector *v)
@@ -114,15 +116,12 @@ void vector_free(vector *v)
 
 vector history;
 
+
 void handle_sig(int sig) //FIX: SIGUSR1, PRINTING OF VALUES ON EXIT
 {
-  if(sig == 2)
+  if(sig == SIGINT)
   {
     printf("\nCAUGHT CTRL + C\n");
-    for (int i = 0; i < vector_count(&history); i++)
-      {
-        printf("%s\n", vector_get(&history, i));
-      }
     exit(0);
   }
 
@@ -148,11 +147,11 @@ int main()
   int p[2];
   int bytes;
 
-  vector_init(&history); //FIX: Rewrites all values...for some odd reason.
   vector v_line;
-  vector_init(&v_line);
 
   int in, out;
+
+  int p_true, app, redir, read, read_pipe, read_redir, amp;
 
   fprintf(stderr,"%s",prompt);
   while ( scanf ("%[^\n]%*c",line) != EOF )
@@ -169,6 +168,34 @@ int main()
         vector_add(&v_line, token);
       }
 
+      /*
+      Loop Pseudo Code
+      for(word in token)
+        previous_command_index = 0
+        if word == |, pipe = true, pipe_to = token[word+2], argv = array[previous_command_index, i], arg = argv[0], pvi = i;
+        if word == >>, app = true, file_app_to = token[word+2], ""
+          scan argv for pipe
+          if found, pipe_write = true, app = false
+        if word == >, redirect = true, file_redirect_to = token[word+2], ""
+          scan arv for pipe
+          if found, pipe_write = true, app = false
+        if word = <
+          if word > in word:
+            argv_read = everything before word and last command
+            argv_pass = everything between <> (run this first)
+            output_file = last element of vector
+            for each in argv_pass:
+              scan for pipes, if found, run read & write w/ a pipe
+              else: run read & write w/out pipe
+          else:
+           arv_pass = everything after word and last command
+           scan argv_pass for pipes
+           if found, read_pipe = 1 (write this into pipe code to write to arv_read
+
+        if array_last_elem = &:
+          amp = 1
+      */
+
       //For testing purposes
       char *test_ls_arg[] = {"ls", NULL};
       char *test_wc_arg[] = {"wc", "-l", NULL};
@@ -177,6 +204,22 @@ int main()
       if(pipe(p) < 0)
       { 
         exit(1);
+      }
+
+      if(0) //Standard commands
+      {
+        switch(pid = fork())
+        {
+          case 0:
+            execvp("ls", test_ls_arg);
+            exit(1);
+          
+          case -1: fprintf(stderr, "ERROR CAN'T CREATE CHILD PROCESS\n");
+            break;
+
+          default:
+            break;
+        }
       }
 
       if(0) //WORKING pipe code
@@ -219,10 +262,12 @@ int main()
         
         close(p[0]);
         close(p[1]);
-        wait(NULL);
-        wait(NULL);
+        if(!amp)
+        {
+          wait(NULL);
+          wait(NULL);
+        }
       }
-
 
       if(0) //WORKING redirect code
       {
@@ -240,7 +285,10 @@ int main()
             break;
 
           default:
-            wait(NULL);
+            if(!amp)
+              {
+              wait(NULL);
+              }
             break;
         }
       }
@@ -261,7 +309,10 @@ int main()
             break;
 
           default:
-            wait(NULL);
+            if(!amp)
+              {
+              wait(NULL);
+              }
             break;
         }
       }
@@ -282,7 +333,10 @@ int main()
             break;
 
           default:
-            wait(NULL);
+            if(!amp)
+              {
+              wait(NULL);
+              }
             break;
         }
       }
@@ -305,24 +359,26 @@ int main()
             break;
 
           default:
-            wait(NULL);
+            if(!amp)
+              {
+              wait(NULL);
+              }
             break;
         }
       }
 
       if(0) //WORKING system commands (built-in)
       {
-        system("env");
+        system("ls");
       }
 
-      if(1) //SKELETON history command
+      if(0) //SKELETON history command
       {
        for (int i = 0; i < vector_count(&history); i++)
         {
 		      printf("%s\n", vector_get(&history, i));
 	      } 
       }
-
 
       fprintf(stderr,"%s",prompt); 
     }
