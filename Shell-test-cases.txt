@@ -14,10 +14,10 @@
 ? LOCATION ? cp /tmp/testfile testfile2
 * diff testfile testfile2             				/* shows the new line addition */
 * sleep 400 &							/* puts a job in the backgroud */
-? BUILT IN? jobs 								/* shows what is in the background */
+* jobs 								/* shows what is in the background */
 * ps -x | grep sleep						/* shows the sleep running in the background*/
 * dd if=/dev/zero of=big count=1 bs=200M &  			/* create a HUGE file in the background,  note: rm big  often   */
-\ PERIOD \ du -sh .							/* how big is the current directory?  it will grow */
+*  -sh .							/* how big is the current directory?  it will grow */
 * history								/* shows the last 10 commands run */
 * cat testfile2 | wc -l						/* should show a 4 for the lines containing z,a,c,j */
 ? SEGFAULT ON OUTPUT w/ PIPE? who | wc -l > users						/* show show how many users are logged into the system in the file */

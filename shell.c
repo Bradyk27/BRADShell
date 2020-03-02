@@ -8,8 +8,8 @@ ERROR CHECK!!!!
 /*
 Error Log:
 Redirect not overwriting files, tweak permissions
+Read not working properly
 General cleanup & consistency, esp variables, pci logic
-Amp issues
 */
 
 /*
@@ -92,6 +92,10 @@ int main()
   int amp;
   char home_path[PATH_MAX];
   getcwd(home_path, sizeof(home_path));
+  pid_t kid_pids[100];
+  int kid_count = 0;
+  char kid_names[100][256];
+  int* kid_status;
 
   int append, redir; //Standard variables
   int p_true, p_redir, p_append; //Pipe variables
@@ -316,6 +320,8 @@ int main()
             break;
 
           default:
+            strcpy(kid_names[kid_count], argv_l[0]);
+            kid_pids[kid_count++] = pid;
             break;
         }
 
@@ -345,6 +351,8 @@ int main()
             break;
 
           default:
+            strcpy(kid_names[kid_count], argv_r[0]);
+            kid_pids[kid_count++] = pid;
             break;
         }
         
@@ -374,6 +382,8 @@ int main()
             break;
 
           default:
+            strcpy(kid_names[kid_count], argv_l[0]);
+            kid_pids[kid_count++] = pid;
             if(!amp)
               {
               wait(NULL);
@@ -399,6 +409,8 @@ int main()
             break;
 
           default:
+            strcpy(kid_names[kid_count], argv_l[0]);
+            kid_pids[kid_count++] = pid;
             if(!amp)
               {
               wait(NULL);
@@ -432,6 +444,8 @@ int main()
               break;
 
             default:
+              strcpy(kid_names[kid_count], argv_l[0]);
+              kid_pids[kid_count++] = pid;
               break;
           }
 
@@ -461,6 +475,8 @@ int main()
               break;
 
             default:
+            strcpy(kid_names[kid_count], argv_r[0]);
+              kid_pids[kid_count++] = pid;
               break;
           }
         
@@ -492,6 +508,8 @@ int main()
                 break;
 
               default:
+                strcpy(kid_names[kid_count], argv_l[0]);
+                kid_pids[kid_count++] = pid;
                 if(!amp)
                   {
                   wait(NULL);
@@ -518,6 +536,8 @@ int main()
                 break;
 
               default:
+                strcpy(kid_names[kid_count], argv_l[0]);
+                kid_pids[kid_count++] = pid;
                 if(!amp)
                   {
                   wait(NULL);
@@ -542,6 +562,8 @@ int main()
                 break;
 
               default:
+                strcpy(kid_names[kid_count], argv_l[0]);
+                kid_pids[kid_count++] = pid;
                 if(!amp)
                   {
                   wait(NULL);
@@ -567,7 +589,7 @@ int main()
           }
         }
 
-        if(!strcmp(v_line[0], "exit") || (!strcmp(v_line[0], "EXIT")))
+        else if(!strcmp(v_line[0], "exit") || (!strcmp(v_line[0], "EXIT")))
         {
           for(int i = run_count; i < 30*loop; i++)
           {
@@ -581,12 +603,17 @@ int main()
           exit(1);
         }
 
-        if(!strcmp(v_line[0], "jobs") || (!strcmp(v_line[0], "JOBS")))
+        else if(!strcmp(v_line[0], "jobs") || (!strcmp(v_line[0], "JOBS")))
         {
-          fprintf(stderr, "TO IMPLEMENT\n");
+          for(int i = 0; i < kid_count; i++){
+            if(!waitpid(kid_pids[i],kid_status, WNOHANG))
+            { 
+              fprintf(stderr, "%s: %d\n", kid_names[i], kid_pids[i]);
+            }
+          }
         }
 
-        if(!strcmp(v_line[0], "cd"))
+        else if(!strcmp(v_line[0], "cd"))
         {
           if(token_count == 1)
           {
@@ -612,6 +639,8 @@ int main()
               break;
 
             default:
+              strcpy(kid_names[kid_count], argv_l[0]);
+              kid_pids[kid_count++] = pid;
               if(!amp)
               {
                 wait(NULL);
