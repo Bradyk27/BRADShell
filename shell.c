@@ -2,11 +2,11 @@
 TODOS:
 Error handling
 Fix error log
+Complete all test cases
 */
 
 /*
 Error Log:
-Redirect not overwriting files, tweak permissions
 Read not working properly
 General cleanup & consistency, esp variables, pci logic
 SEGFAULT / INF Loop on Enter?
@@ -15,9 +15,8 @@ SEGFAULT / INF Loop on Enter?
 /*
 FOR FUNSIES:
 Make this thing really powerful. This could be a cool project. Maybe even make a Windows CP Emulator from it.
-Increase efficiency 10x. There's a better parsing algorithm out there
+Increase efficiency 10x. There's a better parsing algorithm out there. Use functions instead of this shitty logic if-loop bullshit. I'll let it slide for now, but you're better than that.
 Up arrow to display history
-Make this thing less hard coded--FUNCTIONS
 */
 
 /*
@@ -84,7 +83,6 @@ int main()
   int pci;
   int current_tok;
 
-
   char *argv_l[10]; //Execution Variables
   char *argv_r[10];
   char *redir_file;
@@ -96,14 +94,12 @@ int main()
   int kid_count = 0;
   char kid_names[100][256];
   int* kid_status;
+  pid_t pid; //Forking & Piping Variables
+  int in, out;
 
   int append, redir; //Standard variables
   int p_true, p_redir, p_append; //Pipe variables
   int r_true, r_pipe, r_redir, r_append; //Read variables
-
-  pid_t pid; //Forking & Piping Variables
-  int in, out;
-
 
   fprintf(stderr,"%s",prompt);
   while ( scanf ("%[^\n]%*c",line) != EOF ) //While-loop for shell
@@ -116,7 +112,6 @@ int main()
         run_count = 0;
         loop++;
       }
-
 
       char * token = "";
       strcpy(v_line[0], strtok(line, " ,")); //Scan each line, divvy into tokens
@@ -131,7 +126,7 @@ int main()
             token = NULL;
           }
           else{
-          strcpy(v_line[token_count+1], token);
+            strcpy(v_line[token_count+1], token);
           }
         }
         token_count++;
@@ -258,9 +253,9 @@ int main()
 
           l = 0;
           char argv_2[10][256];
-          for(int j = pci+1; j < token_count; j++) //Figure out what comes after the read
+          for(int j = pci+1; j < token_count; j++) //Grab everything after read
           {
-            if(!strncmp(v_line[j], ">", 256)){ //Find redirect
+            if(!strncmp(v_line[j], ">", 256)){ //Found redirect
               r_redir = 1;
               redir_file = v_line[j+1];
               current_tok++;
@@ -268,7 +263,7 @@ int main()
               break;
             }
 
-            else if(!strncmp(v_line[j], ">>", 256)){ //Find append
+            else if(!strncmp(v_line[j], ">>", 256)){ //Found append
               r_append = 1;
               redir_file = v_line[j+1];
               current_tok++;
@@ -276,14 +271,14 @@ int main()
               break;
             }
 
-            else if(!strncmp(v_line[j], "|", 256)){ //Find pipe and record pipe arguments
+            else if(!strncmp(v_line[j], "|", 256)){ //Found pipe, continue scanning for redirect / append
               r_pipe = 1;
               current_tok++;
               pci = j;
               k = pci+1;
             }
 
-            if(r_pipe)
+            if(r_pipe) //Record pipe arguments
             {
               strcpy(argv[l], v_line[k]);
               k++;
@@ -292,8 +287,8 @@ int main()
             }
           }
 
-          for(int m = 0; m < l; m++){argv_l[m] = argv[m];}
-          argv_l[l] = NULL;
+          for(int m = 0; m < l; m++){argv_r[m] = argv[m];} //Assign everything after the read to an argument list. Just for funsies
+          argv_r[l] = NULL;
 
         }
 
@@ -302,7 +297,7 @@ int main()
         }
       }
 
-      if(p_true) //TEST: Piping
+      if(p_true) //Piping
       { 
         p_true = 0;
         pipe(p); //One pipe, parent controls between the two
@@ -331,14 +326,14 @@ int main()
             close(p[1]);
             dup2(p[0], STDIN_FILENO); //Reads from its pipe
             close(p[0]);
-            if(p_redir)
+            if(p_redir) //Check for redir
             {
               out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
               dup2(out, STDOUT_FILENO);
               close(out);
             }
 
-            if(p_append)
+            if(p_append) //Check for append
             {
               out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
               dup2(out, STDOUT_FILENO);
@@ -351,7 +346,7 @@ int main()
             break;
 
           default:
-            strcpy(kid_names[kid_count], argv_r[0]);
+            strcpy(kid_names[kid_count], argv_r[0]); //Grab process info for jobs command
             kid_pids[kid_count++] = pid;
             break;
         }
@@ -365,13 +360,13 @@ int main()
         }
       }
 
-      else if(redir) //TEST: Redirection
+      else if(redir) //Redirection
       { 
         redir = 0;
         switch(pid = fork())
         {
           case 0:
-             out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+             out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //Open output file
              dup2(out, STDOUT_FILENO);
              close(out);
              execvp(argv_l[0], argv_l);
@@ -382,7 +377,7 @@ int main()
             break;
 
           default:
-            strcpy(kid_names[kid_count], argv_l[0]);
+            strcpy(kid_names[kid_count], argv_l[0]); //Grab process info for jobs command
             kid_pids[kid_count++] = pid;
             if(!amp)
               {
@@ -392,13 +387,13 @@ int main()
         }
       }
 
-      else if(append) //TEST: Append
+      else if(append) //Append
       {
         append = 0;
         switch(pid = fork())
         {
           case 0:
-             out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+             out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //Same as redirect, different permissions
              dup2(out, STDOUT_FILENO);
              close(out);
              execvp(argv_l[0] , argv_l);
@@ -409,7 +404,7 @@ int main()
             break;
 
           default:
-            strcpy(kid_names[kid_count], argv_l[0]);
+            strcpy(kid_names[kid_count], argv_l[0]); //Grab process info
             kid_pids[kid_count++] = pid;
             if(!amp)
               {
@@ -419,11 +414,12 @@ int main()
         }
       }
 
-      else if(r_true) //TEST: Read
+      else if(r_true) //Read
       {
         r_true = 0;
 
-        if(r_pipe){ //Read + Pipe
+        if(r_pipe)
+        { //Read + Pipe
           r_pipe = 0;
           pipe(p); //One pipe, parent controls between the two
 
@@ -489,8 +485,8 @@ int main()
           }
         }
 
-        else{
-          if(r_redir)
+        else{ //No pipe
+          if(r_redir) //Check for redirect, same as before (really need to store these as functions)
           {
             switch(pid = fork())
             {
@@ -518,7 +514,7 @@ int main()
             }
           }
 
-          else if(r_append)
+          else if(r_append) //Check for append, same as before
           {
             switch(pid = fork())
             {
@@ -546,7 +542,7 @@ int main()
             }
           }
 
-          else{
+          else{ //Just a standard read
             switch(pid = fork())
             {
               r_true = 0;
@@ -574,9 +570,9 @@ int main()
         }
       }
 
-      else //Shell & Other defaults
+      else //Shell Built-Ins & Other defaults
       {
-        if(!strcmp(v_line[0], "history") || (!strcmp(v_line[0], "HISTORY")))
+        if(!strcmp(v_line[0], "history") || (!strcmp(v_line[0], "HISTORY"))) //History command
         {
           for(int i = run_count; i < 30*loop; i++)
           {
@@ -589,7 +585,7 @@ int main()
           }
         }
 
-        else if(!strcmp(v_line[0], "exit") || (!strcmp(v_line[0], "EXIT")))
+        else if(!strcmp(v_line[0], "exit") || (!strcmp(v_line[0], "EXIT"))) //Exit Command
         {
           for(int i = run_count; i < 30*loop; i++)
           {
@@ -603,7 +599,7 @@ int main()
           exit(1);
         }
 
-        else if(!strcmp(v_line[0], "jobs") || (!strcmp(v_line[0], "JOBS")))
+        else if(!strcmp(v_line[0], "jobs") || (!strcmp(v_line[0], "JOBS"))) //Jobs Command
         {
           for(int i = 0; i < kid_count; i++){
             if(!waitpid(kid_pids[i],kid_status, WNOHANG))
@@ -613,7 +609,7 @@ int main()
           }
         }
 
-        else if(!strcmp(v_line[0], "cd"))
+        else if(!strcmp(v_line[0], "cd")) //CD command
         {
           if(token_count == 1)
           {
@@ -625,7 +621,7 @@ int main()
         }
 
 
-        else
+        else //Just a normal process
         {
           for(int i = 0; i < token_count; i++){argv_l[i] = v_line[i];} //Assign left arguments
           argv_l[token_count+1] = NULL;
@@ -651,8 +647,9 @@ int main()
       }
 
       fprintf(stderr,"%s",prompt); 
+
       token_count = 0;
-      for(int i = 0; i < 10; i++){ //Clear out argument tags
+      for(int i = 0; i < 10; i++){ //Clear out argument tags to use again.
         argv_l[i] = NULL;
         argv_r[i] = NULL;
       }
