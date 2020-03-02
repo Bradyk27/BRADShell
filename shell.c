@@ -39,6 +39,7 @@ Sources:
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <limits.h>
 
 
 char history[30][256]; //History variables, created here so the signal handler can use them.
@@ -50,7 +51,6 @@ void handle_sig(int sig) //Signal handler, handles CTRL + C & SIGUSR1
   if(sig == SIGINT)
   {
     fprintf(stderr, "\nCAUGHT CTRL + C\n");
-    exit(0);
   }
 
   if(sig == SIGUSR1)
@@ -77,7 +77,7 @@ int main()
   signal(SIGINT, handle_sig); //Setting up of signal handlers
   signal(SIGUSR1, handle_sig);
 
-  char *prompt = "BRADv4> "; //Parsing variables
+  char *prompt = "BRADv5> "; //Parsing variables
   char line[256];
   int p[2];
   int token_count = 0;
@@ -90,6 +90,8 @@ int main()
   char *redir_file;
   char *read_file;
   int amp;
+  char home_path[PATH_MAX];
+  getcwd(home_path, sizeof(home_path));
 
   int append, redir; //Standard variables
   int p_true, p_redir, p_append; //Pipe variables
@@ -113,13 +115,20 @@ int main()
 
 
       char * token = "";
-      strcpy(v_line[0], strtok(line, " ,.")); //Scan each line, divvy into tokens
+      strcpy(v_line[0], strtok(line, " ,")); //Scan each line, divvy into tokens
       while(token != NULL)
       { 
-        token = strtok(NULL, " ,.");
+        token = strtok(NULL, " ,");
         if(token != NULL)
-        {
+        { 
+          if(!strcmp(token, "&"))
+          {
+            amp = 1;
+            token = NULL;
+          }
+          else{
           strcpy(v_line[token_count+1], token);
+          }
         }
         token_count++;
       }
@@ -545,7 +554,7 @@ int main()
 
       else //Shell & Other defaults
       {
-        if(!strcmp(v_line[0], "history"))
+        if(!strcmp(v_line[0], "history") || (!strcmp(v_line[0], "HISTORY")))
         {
           for(int i = run_count; i < 30*loop; i++)
           {
@@ -557,6 +566,37 @@ int main()
             fprintf(stderr, "CMD %d: %s\n", i+(30*loop), history[i]);
           }
         }
+
+        if(!strcmp(v_line[0], "exit") || (!strcmp(v_line[0], "EXIT")))
+        {
+          for(int i = run_count; i < 30*loop; i++)
+          {
+            fprintf(stderr, "CMD %d: %s\n", i, history[i]);
+          }
+
+          for(int i = 0; i < run_count; i++)
+          {
+            fprintf(stderr, "CMD %d: %s\n", i+(30*loop), history[i]);
+          }
+          exit(1);
+        }
+
+        if(!strcmp(v_line[0], "jobs") || (!strcmp(v_line[0], "JOBS")))
+        {
+          fprintf(stderr, "TO IMPLEMENT\n");
+        }
+
+        if(!strcmp(v_line[0], "cd"))
+        {
+          if(token_count == 1)
+          {
+            chdir(home_path);
+          }
+          else{
+            if(chdir(v_line[1])){fprintf(stderr, "NO SUCH DIRECTORY!");}
+          }
+        }
+
 
         else
         {
