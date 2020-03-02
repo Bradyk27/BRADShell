@@ -11,7 +11,8 @@
 * cd								/* go back to HOME since no argument */
 * pwd								/* where am i, don't need to implement as a builtin since linux provides it */
 * echo j >> /tmp/testfile						/* add a new line */
-* cp /tmp/testfile testfile2top
+* cp /tmp/testfile testfile2
+* top
 * diff testfile testfile2             				/* shows the new line addition */
 * sleep 400 &							/* puts a job in the backgroud */
 * jobs 								/* shows what is in the background */
@@ -22,7 +23,7 @@
 * cat testfile2 | wc -l						/* should show a 4 for the lines containing z,a,c,j */
 * who | wc -l > users						/* show show how many users are logged into the system in the file */
 * who > testusers							 
-* cat < testusers | wc -l > users2				/* show show how many users are logged into the system in the file */
+*cat < testusers | wc -l > users2				/* show show how many users are logged into the system in the file */
 * diff users users2						/* same number of users */
 * top								/* do a ctr-C to kill top but not the program */
 * env								/* builtin */

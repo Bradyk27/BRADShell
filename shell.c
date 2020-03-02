@@ -80,7 +80,6 @@ int main()
   int token_count = 0;
   int pci;
   int current_tok;
-  int ch;
 
   char *argv_l[10]; //Execution Variables
   char *argv_r[10];
@@ -103,9 +102,8 @@ int main()
   int r_true, r_pipe, r_redir, r_append; //Read variables
 
   fprintf(stderr,"%s",prompt);
-  while (scanf ("%[^\n]%*c",line) != EOF) //While-loop for shell
+  while ( scanf ("%[^\n]%*c",line) != EOF ) //While-loop for shell
     { 
-
       char v_line[10][256];
       strcpy(history[run_count], line); //History record, max up to 30, circular buffer
       run_count++;
@@ -642,11 +640,10 @@ int main()
         }
       }
 
-      fprintf(stderr, "%s", prompt);
-      strcpy(line, "\n");
+      fprintf(stderr,"%s",prompt); 
+
       amp = 0;
       token_count = 0;
-      while ((getchar()) != '\n');
       for(int i = 0; i < 10; i++){ //Clear out argument tags to use again.
         argv_l[i] = NULL;
         argv_r[i] = NULL;
