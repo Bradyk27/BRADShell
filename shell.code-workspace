@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"__mutex_base": "c",
+			"condition_variable": "c",
+			"stdlib.h": "c",
+			"types.h": "c"
+		}
+	}
+}

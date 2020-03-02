@@ -1,5 +1,5 @@
-ls -l 								/* start small, my tests have comments but you can clean these out you are not required to support comments */
-ls -lR /usr > trashfile                 			/* will work, but generates errors to terminal for directories you don't have permission to see...*/
+* ls -l 								/* start small, my tests have comments but you can clean these out you are not required to support comments */
+? ls -lR /usr > trashfile                 			/* will work, but generates errors to terminal for directories you don't have permission to see...*/
 history								/* shows the last commands run builtin*/
 echo z > testfile						/* build a test file */
 echo a >> testfile
