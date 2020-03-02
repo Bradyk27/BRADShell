@@ -1,33 +1,30 @@
 /*
 TODOS:
 Error handling
-Fix error log
-Complete all test cases
 */
 
 /*
 Error Log:
-Write not overwriting file always...sometimes just appends to top?
-General cleanup & consistency, esp variables, pci logic
 SEGFAULT / INF Loop on Enter?
-TOKEN ERROR on read, pipe & redirect
-READS not being cleared properly
 */
 
 /*
 FOR FUNSIES:
-Make this thing really powerful. This could be a cool project. Maybe even make a Windows CP Emulator from it.
-Increase efficiency 10x. There's a better parsing algorithm out there. Use functions instead of this shitty logic if-loop bullshit. I'll let it slide for now, but you're better than that.
-Up arrow to display history
+- Make this thing really powerful. This could be a cool project. Maybe even make a Windows CP Emulator from it.
+- Increase efficiency 10x / general cleanup. There's a better parsing algorithm out there. Use functions instead of this shitty logic if-loop bullshit. I'll let it slide for now, but you're better than that.
+- Up arrow to display history
+- Wait to print stuff so the prompt doesn't get overrun
 */
 
 /*
 Brady Kruse
 bak225
+2/2/20 @ 2:36:00AM
+
 Sources:
 1) Redirect Skeleton Code: http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html
 2) Mr. Ritter's "Babyshell"
-3) Help from http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html, https://www.geeksforgeeks.org/c-program-demonstrate-fork-and-pipe/, 
+3) General Help from http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html, https://www.geeksforgeeks.org/c-program-demonstrate-fork-and-pipe/, 
    http://www.microhowto.info/howto/capture_the_output_of_a_child_process_in_c.html, http://heapspray.net/post/redirect-stdout-of-child-to-parent-process-in-c/
 */
 
@@ -78,9 +75,8 @@ int main()
   signal(SIGINT, handle_sig); //Setting up of signal handlers
   signal(SIGUSR1, handle_sig);
 
-  char *prompt = "BRADv5> "; //Parsing variables
+  char *prompt = "B-RADv6> "; //Parsing variables
   char line[256];
-  int p[2];
   int token_count = 0;
   int pci;
   int current_tok;
@@ -96,8 +92,10 @@ int main()
   int kid_count = 0;
   char kid_names[100][256];
   int* kid_status;
+
   pid_t pid; //Forking & Piping Variables
   int in, out;
+  int p[2];
 
   int append, redir; //Standard variables
   int p_true, p_redir, p_append; //Pipe variables
@@ -275,7 +273,6 @@ int main()
               if(r_pipe)
               {
                 argv_r[l] = v_line[k];
-                fprintf(stderr, "Pipe Command: %s\n", argv_r[l]);
                 k++;
                 l++;
                 current_tok++;
@@ -324,7 +321,7 @@ int main()
             if(p_redir) //Check for redir
             {
               p_redir = 0;
-              out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+              out = open(redir_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
               dup2(out, STDOUT_FILENO);
               close(out);
             }
@@ -363,7 +360,7 @@ int main()
         switch(pid = fork())
         {
           case 0:
-             out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //Open output file
+             out = open(redir_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //Open output file
              dup2(out, STDOUT_FILENO);
              close(out);
              execvp(argv_l[0], argv_l);
@@ -450,7 +447,7 @@ int main()
               close(p[0]);
               if(r_redir)
               {
-                out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+                out = open(redir_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
                 dup2(out, STDOUT_FILENO);
                 close(out);
               }
@@ -489,7 +486,7 @@ int main()
             {
               case 0:
                 in = open(read_file, O_RDONLY);
-                out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); 
+                out = open(redir_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); 
                 dup2(in, STDIN_FILENO);
                 dup2(out, STDOUT_FILENO);
                 close(in);
@@ -644,7 +641,8 @@ int main()
       }
 
       fprintf(stderr,"%s",prompt); 
-      p_redir = 0;
+
+      amp = 0;
       token_count = 0;
       for(int i = 0; i < 10; i++){ //Clear out argument tags to use again.
         argv_l[i] = NULL;
