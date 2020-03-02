@@ -10,8 +10,8 @@
 * pwd								/* where am i, don't need to implement as a builtin since linux provides it */
 * cd								/* go back to HOME since no argument */
 * pwd								/* where am i, don't need to implement as a builtin since linux provides it */
-? LOCATION ? echo j >> /tmp/testfile						/* add a new line */
-? LOCATION ? cp /tmp/testfile testfile2
+* echo j >> /tmp/testfile						/* add a new line */
+* LOCATION ? cp /tmp/testfile testfile2 (MAC uses tmp/ instead of /tmp/)
 * diff testfile testfile2             				/* shows the new line addition */
 * sleep 400 &							/* puts a job in the backgroud */
 * jobs 								/* shows what is in the background */

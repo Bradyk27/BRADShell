@@ -1,7 +1,8 @@
 /*
 TODOS:
+Built in shell commands (cd, env, amp, etc.) Should be very easy
 Error handling
-Fix error log
+ERROR CHECK!!!!
 */
 
 /*
@@ -9,7 +10,6 @@ Error Log:
 Redirect not overwriting files, tweak permissions
 Read not working properly
 General cleanup & consistency, esp variables, pci logic
-SEGFAULT / INF Loop on Enter?
 */
 
 /*
@@ -340,7 +340,7 @@ int main()
 
             if(p_append)
             {
-              out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+              out = open(redir_file, O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
               dup2(out, STDOUT_FILENO);
               close(out);
             }
@@ -398,7 +398,7 @@ int main()
         switch(pid = fork())
         {
           case 0:
-             out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+             out = open(redir_file, O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
              dup2(out, STDOUT_FILENO);
              close(out);
              execvp(argv_l[0] , argv_l);
@@ -464,7 +464,7 @@ int main()
 
               if(r_append)
               {
-                out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+                out = open(redir_file, O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
                 dup2(out, STDOUT_FILENO);
                 close(out);
               }
@@ -524,7 +524,7 @@ int main()
             {
               case 0:
                 in = open(read_file, O_RDONLY);
-                out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+                out = open(redir_file, O_APPEND, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
                 dup2(in, STDIN_FILENO);
                 dup2(out, STDOUT_FILENO);
                 close(in);
