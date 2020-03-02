@@ -4,7 +4,7 @@
 * echo z > testfile						/* build a test file */
 * echo a >> testfile
 * echo c >> testfile
-? READ not executing proper ? sort < testfile                     				/* shows lines sorted */
+* sort < testfile                     				/* shows lines sorted */
 ? READ not executing proper + LOCATION ? sort < testfile > /tmp/testfile 				/* save sorted file */
 * cd /tmp								/* go to system tmp directory builtin */
 * pwd								/* where am i, don't need to implement as a builtin since linux provides it */
@@ -20,9 +20,9 @@
 *  -sh .							/* how big is the current directory?  it will grow */
 * history								/* shows the last 10 commands run */
 * cat testfile2 | wc -l						/* should show a 4 for the lines containing z,a,c,j */
-? SEGFAULT ON OUTPUT w/ PIPE? who | wc -l > users						/* show show how many users are logged into the system in the file */
+* who | wc -l > users						/* show show how many users are logged into the system in the file */
 * who > testusers							 
-? TOKEN ERROR WC not receiving file on read ? wccat < testusers | wc -l > users2				/* show show how many users are logged into the system in the file */
+? TOKEN ERROR WC not receiving file on read ? cat < testusers | wc -l > users2				/* show show how many users are logged into the system in the file */
 * diff users users2						/* same number of users */
 * top								/* do a ctr-C to kill top but not the program */
 * env								/* builtin */

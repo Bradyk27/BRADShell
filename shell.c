@@ -7,9 +7,11 @@ Complete all test cases
 
 /*
 Error Log:
-Read not working properly
+Write not overwriting file always...sometimes just appends to top?
 General cleanup & consistency, esp variables, pci logic
 SEGFAULT / INF Loop on Enter?
+TOKEN ERROR on read, pipe & redirect
+READS not being cleared properly
 */
 
 /*
@@ -135,7 +137,7 @@ int main()
       //Logic handler of commands
       pci = 0;
       current_tok = 0;
-      while(current_tok != token_count) //Walk through every token
+      while(current_tok < token_count) //Walk through every token
       {
 
         if(!strncmp(v_line[current_tok], "|", 256)) //Found a pipe
@@ -148,18 +150,15 @@ int main()
           char argv[10][256];
           for(int j = 0; j < pipe_to - pci - 1; j++) //Grab everything before the pipe
             {
-              strcpy(argv[l], v_line[k]);
+              argv_l[l] = v_line[k];
               k++;
               l++;
-            }
-          for(int m = 0; m < l; m++){argv_l[m] = argv[m];} //Assign left arguments
+            } 
           argv_l[l] = NULL;
           pci = l;
 
-
-          char argv_2[10][256];
           l = 0;
-          for(int j = pci+1; j < token_count; j++) //Grab everything after the pipe
+          for(int j = pci+1; j < token_count; j++) //Grab everything after the pipe //SOMEHOW, the right is receiving old arguments
             {
               if(!strncmp(v_line[j], ">", 256)) //Check for redirection
                 {
@@ -179,13 +178,11 @@ int main()
                   break;
                 }
 
-              strcpy(argv_2[l], v_line[j]);
+              argv_r[l] = v_line[j];
               l++;
             }
-          
-          for(int m = 0; m < l; m++){argv_r[m] = argv_2[m];} //Assign right arguments
           argv_r[l] = NULL;
-          current_tok += l;
+          current_tok = token_count;
         }
 
         else if(!strncmp(v_line[current_tok], ">", 256)) //Found a redirect
@@ -208,7 +205,6 @@ int main()
           redir_file = v_line[redir_to];
           current_tok++;
         }
-
         else if(!strncmp(v_line[current_tok], ">>", 256)) //Found an append
         {
           append = 1;
@@ -236,29 +232,25 @@ int main()
           int read_from  = current_tok+1;
           int k = pci;
           int l = 0;
-          char argv[10][256];
           for(int j = 0; j < read_from - pci - 1; j++) //Grab everything before read
             {
-              strcpy(argv[l], v_line[k]);
+              argv_l[l] = v_line[k];
               k++;
               l++;
             }
-          for(int m = 0; m < l; m++){argv_l[m] = argv[m];} //Assign left arguments
           argv_l[l] = NULL;
           pci = l;
 
           read_file = v_line[read_from];
-          current_tok++;
-          fprintf(stderr, "%d", current_tok);
+          current_tok = current_tok+2;
 
           l = 0;
-          char argv_2[10][256];
           for(int j = pci+1; j < token_count; j++) //Grab everything after read
           {
             if(!strncmp(v_line[j], ">", 256)){ //Found redirect
               r_redir = 1;
               redir_file = v_line[j+1];
-              current_tok++;
+              current_tok = token_count;
               pci = j;
               break;
             }
@@ -266,7 +258,7 @@ int main()
             else if(!strncmp(v_line[j], ">>", 256)){ //Found append
               r_append = 1;
               redir_file = v_line[j+1];
-              current_tok++;
+              current_tok = token_count;
               pci = j;
               break;
             }
@@ -278,16 +270,18 @@ int main()
               k = pci+1;
             }
 
-            if(r_pipe) //Record pipe arguments
+            else//Record pipe arguments
             {
-              strcpy(argv[l], v_line[k]);
-              k++;
-              l++;
-              current_tok++;
+              if(r_pipe)
+              {
+                argv_r[l] = v_line[k];
+                fprintf(stderr, "Pipe Command: %s\n", argv_r[l]);
+                k++;
+                l++;
+                current_tok++;
+              }
             }
           }
-
-          for(int m = 0; m < l; m++){argv_r[m] = argv[m];} //Assign everything after the read to an argument list. Just for funsies
           argv_r[l] = NULL;
 
         }
@@ -326,8 +320,10 @@ int main()
             close(p[1]);
             dup2(p[0], STDIN_FILENO); //Reads from its pipe
             close(p[0]);
+
             if(p_redir) //Check for redir
             {
+              p_redir = 0;
               out = open(redir_file, O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
               dup2(out, STDOUT_FILENO);
               close(out);
@@ -335,6 +331,7 @@ int main()
 
             if(p_append) //Check for append
             {
+              p_append = 0;
               out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
               dup2(out, STDOUT_FILENO);
               close(out);
@@ -647,11 +644,12 @@ int main()
       }
 
       fprintf(stderr,"%s",prompt); 
-
+      p_redir = 0;
       token_count = 0;
       for(int i = 0; i < 10; i++){ //Clear out argument tags to use again.
         argv_l[i] = NULL;
         argv_r[i] = NULL;
+        strcpy(v_line[i], "");
       }
     }
   exit(0);

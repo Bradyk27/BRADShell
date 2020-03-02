@@ -1,0 +1,25 @@
+total 232
+-rw-r--r--  1 admin  staff     58 Feb 29 17:06 README.md
+-rw-r--r--@ 1 admin  staff   2306 Mar  2 00:59 Shell-test-cases.txt
+-rwxr-xr-x  1 admin  staff  17604 Mar  2 01:47 a.out
+-rw-r--r--@ 1 admin  staff    757 Feb 27 15:12 babyshell.c
+-rw-r--r--  1 admin  staff  18614 Mar  2 01:47 shell.c
+-rw-r--r--@ 1 admin  staff    184 Mar  1 18:25 shell.code-workspace
+-rw-r-----  1 admin  staff   1187 Mar  2 01:47 test
+-rw-r--r--  1 admin  staff      5 Mar  2 00:36 test1
+-rw-r-----  1 admin  staff   1187 Mar  2 01:43 test10
+-rw-r--r--  1 admin  staff      9 Mar  2 01:38 test2
+-rw-r-----  1 admin  staff      9 Mar  2 01:41 test25
+-rw-r-----  1 admin  staff     11 Mar  2 00:38 test3
+-rw-r-----  1 admin  staff   1241 Mar  2 01:43 test30
+-rw-r--r--  1 admin  staff     25 Mar  2 01:31 test4
+-rw-r-----  1 admin  staff     25 Mar  2 01:40 test42
+-rw-r--r--  1 admin  staff     25 Mar  2 00:51 test5
+-rw-r-----  1 admin  staff     25 Mar  2 01:39 test69
+drwxr-xr-x  2 admin  staff     64 Feb 29 17:10 testdir
+-rw-r-----  1 admin  staff     31 Mar  2 01:46 testplease
+drwxr-xr-x  4 admin  staff    128 Mar  2 00:32 tmp
+-rw-r--r--  1 admin  staff      9 Mar  2 01:00 users
+-rw-r-----  1 admin  staff      0 Mar  2 00:58 users2
+-rw-r-----  1 admin  staff      0 Mar  2 01:48 wc
+-rw-r--r--@ 1 admin  staff   7241 Feb 28 20:32 workingreferenceshell.c
