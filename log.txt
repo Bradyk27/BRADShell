@@ -1,0 +1,30 @@
+CMD 4: echo a >> testfile
+CMD 5: echo c >> testfile
+CMD 6: sort < testfile
+CMD 7: sort < testfile > tmp/testfile
+CMD 8: cd /tmp
+CMD 9: ls
+CMD 10: pwd
+CMD 11: cd
+CMD 12: pwd
+CMD 13: echo j >> tmp/testfile
+CMD 14: cp tmp/testfile testfile2
+CMD 15: sleep 400 &
+CMD 16: jobs
+CMD 17: ps -x | grep sleep
+CMD 18: du -sh
+CMD 19: history
+CMD 20: cat testfile | wc -l
+CMD 21: who | wc -l > users
+CMD 22: who > testusers
+CMD 23: cat < testusers | wc -l > users2
+CMD 24: diff users users2
+CMD 25: diff testfile testfile2
+CMD 26: top
+CMD 27: env
+CMD 28: ls >
+CMD 29: cat testusers |
+CMD 30: sort <
+CMD 31: ps
+CMD 32: kill -30 440767
+CMD 33: kill -30 44767
