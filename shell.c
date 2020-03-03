@@ -1,11 +1,7 @@
 /*
 TODOS:
-Error handling
-*/
-
-/*
-Error Log:
-SEGFAULT / INF Loop on Enter?
+CHECK CITATIONS
+REPORT
 */
 
 /*
@@ -14,6 +10,8 @@ FOR FUNSIES:
 - Increase efficiency 10x / general cleanup. There's a better parsing algorithm out there. Use functions instead of this shitty logic if-loop bullshit. I'll let it slide for now, but you're better than that.
 - Up arrow to display history
 - Wait to print stuff so the prompt doesn't get overrun
+- amp error besides the process just not running.
+- Shorten
 */
 
 /*
@@ -26,6 +24,7 @@ Sources:
 2) Mr. Ritter's "Babyshell"
 3) General Help from http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html, https://www.geeksforgeeks.org/c-program-demonstrate-fork-and-pipe/, 
    http://www.microhowto.info/howto/capture_the_output_of_a_child_process_in_c.html, http://heapspray.net/post/redirect-stdout-of-child-to-parent-process-in-c/
+4) ENV Command from https://www.sanfoundry.com/c-program-environment-variable/
 */
 
 #include <stdio.h> //All necessary libraries
@@ -40,9 +39,10 @@ Sources:
 #include <limits.h>
 
 
-char history[30][256]; //History variables, created here so the signal handler can use them.
+char history[30][256]; //History & log variables, created here so the signal handler can use them.
 int run_count = 0;
 int loop = 0;
+FILE * log_file;
 
 void handle_sig(int sig) //Signal handler, handles CTRL + C & SIGUSR1
 {
@@ -52,31 +52,34 @@ void handle_sig(int sig) //Signal handler, handles CTRL + C & SIGUSR1
   }
 
   if(sig == SIGUSR1)
-  {
-    fprintf(stderr, "\nCAUGHT SIGUSR1\n");
+  { 
+    log_file = fopen("log.txt","w");
+    fprintf(stderr, "\nCAUGHT SIGUSR1: LOG FILE OUTPUTTED\n");
     {
       for(int i = run_count; i < 30*loop; i++)
       {
-        fprintf(stderr, "CMD %d: %s\n", i, history[i]);
+        fprintf(log_file, "CMD %d: %s", i, history[i]);
       }
 
       for(int i = 0; i < run_count; i++)
       {
-        fprintf(stderr, "CMD %d: %s\n", i+(30*loop), history[i]);
+        fprintf(log_file, "CMD %d: %s", i+(30*loop), history[i]);
       }
     }
+    fclose(log_file);
     exit(0);
   }
 }
 
-int main()
+int main(int argc, char* argv[], char* envp[])
 {
 
   signal(SIGINT, handle_sig); //Setting up of signal handlers
   signal(SIGUSR1, handle_sig);
 
-  char *prompt = "B-RADv6> "; //Parsing variables
-  char *line;
+  char *prompt = "B-RADv8> ";  //CheekyShellName.jpg
+  
+  char *line; //Parsing Variables
   size_t size = 256;
   int token_count = 0;
   int pci;
@@ -105,7 +108,7 @@ int main()
   fprintf(stderr,"%s",prompt);
   while (getline(&line, &size, stdin) != EOF ) //While-loop for shell
     { 
-      if(!strcmp(line, "\n"))
+      if(!strcmp(line, "\n")) //Handle empty line
       {
         goto end;
       }
@@ -145,6 +148,13 @@ int main()
 
         if(!strncmp(v_line[current_tok], "|", 256)) //Found a pipe
         {
+
+          if(!strncmp(v_line[current_tok+1], "", 256)) //Error Check
+          {
+            fprintf(stderr, "INVALID PIPE COMMAND\n");
+            goto end;
+          }
+          
           p_true = 1;
 
           int pipe_to = current_tok+1;
@@ -187,9 +197,15 @@ int main()
           argv_r[l] = NULL;
           current_tok = token_count;
         }
-
         else if(!strncmp(v_line[current_tok], ">", 256)) //Found a redirect
         {
+
+          if(!strncmp(v_line[current_tok+1], "", 256)) //Error Check
+          {
+            fprintf(stderr, "INVALID REDIR COMMAND!\n");
+            goto end;
+          }
+
           redir = 1;
           int redir_to = current_tok+1;
           int k = pci;
@@ -210,6 +226,13 @@ int main()
         }
         else if(!strncmp(v_line[current_tok], ">>", 256)) //Found an append
         {
+
+          if(!strncmp(v_line[current_tok+1], "", 256)) //Error Check
+          {
+            fprintf(stderr, "INVALID APPEND COMMAND!\n");
+            goto end;
+          }
+
           append = 1;
           int append_to = current_tok+1;
           int k = pci;
@@ -228,9 +251,15 @@ int main()
           redir_file = v_line[append_to];
           current_tok++;
         }
-
         else if(!strncmp(v_line[current_tok], "<", 256)) //Found a read
         {
+
+          if(!strncmp(v_line[current_tok+1], "", 256)) //Error Check
+          {
+            fprintf(stderr, "INVALID READ COMMAND!\n");
+            goto end;
+          }
+
           r_true = 1;
           int read_from  = current_tok+1;
           int k = pci;
@@ -287,8 +316,7 @@ int main()
           argv_r[l] = NULL;
 
         }
-
-        else{
+        else{ //Pass over
           current_tok++;
         }
       }
@@ -304,7 +332,7 @@ int main()
             close(p[0]); //no need to read, just writes to its pipe.
             dup2(p[1], STDOUT_FILENO);
             close(p[1]);
-            execvp(argv_l[0], argv_l);
+            if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "LEFT COMMAND NOT FOUND\n");goto end;}
             exit(1);
 
           case -1: fprintf(stderr, "ERROR CAN'T CREATE CHILD PROCESS\n");
@@ -338,7 +366,7 @@ int main()
               dup2(out, STDOUT_FILENO);
               close(out);
             }
-            execvp(argv_r[0], argv_r);
+            if(execvp(argv_r[0], argv_r)==-1){fprintf(stderr, "RIGHT COMMAND NOT FOUND\n");};
             exit(1);
 
           case -1: fprintf(stderr, "ERROR can't create child process\n");
@@ -358,7 +386,6 @@ int main()
           wait(NULL);
         }
       }
-
       else if(redir) //Redirection
       { 
         redir = 0;
@@ -368,7 +395,7 @@ int main()
              out = open(redir_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //Open output file
              dup2(out, STDOUT_FILENO);
              close(out);
-             execvp(argv_l[0], argv_l);
+             if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
              exit(1);
              break;
 
@@ -385,7 +412,6 @@ int main()
             break;
         }
       }
-
       else if(append) //Append
       {
         append = 0;
@@ -395,7 +421,7 @@ int main()
              out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //Same as redirect, different permissions
              dup2(out, STDOUT_FILENO);
              close(out);
-             execvp(argv_l[0] , argv_l);
+             if(execvp(argv_l[0] , argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
              exit(1);
              break;
 
@@ -412,7 +438,6 @@ int main()
             break;
         }
       }
-
       else if(r_true) //Read
       {
         r_true = 0;
@@ -432,7 +457,7 @@ int main()
               close(p[0]); //no need to read, just writes to its pipe.
               dup2(p[1], STDOUT_FILENO);
               close(p[1]);
-              execvp(argv_l[0], argv_l);
+              if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
               exit(1);
 
             case -1: fprintf(stderr, "ERROR CAN'T CREATE CHILD PROCESS\n");
@@ -463,7 +488,7 @@ int main()
                 dup2(out, STDOUT_FILENO);
                 close(out);
               }
-              execvp(argv_r[0], argv_r);
+              if(execvp(argv_r[0], argv_r) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
               exit(1);
 
             case -1: fprintf(stderr, "ERROR can't create child process\n");
@@ -496,7 +521,7 @@ int main()
                 dup2(out, STDOUT_FILENO);
                 close(in);
                 close(out);
-                execvp(argv_l[0] , argv_l);
+                if(execvp(argv_l[0] , argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
                 break;
               
               case -1: fprintf(stderr,"ERROR can't create child process!\n");
@@ -524,7 +549,7 @@ int main()
                 dup2(out, STDOUT_FILENO);
                 close(in);
                 close(out);
-                execvp(argv_l[0] , argv_l);
+                if(execvp(argv_l[0] , argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
                 break;
               
               case -1: fprintf(stderr,"ERROR can't create child process!\n");
@@ -549,7 +574,7 @@ int main()
                 in = open(read_file, O_RDONLY);
                 dup2(in, STDIN_FILENO);
                 close(in);
-                execvp(argv_l[0], argv_l);
+                if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
                 exit(1);
                 break;
 
@@ -568,19 +593,18 @@ int main()
           }
         }
       }
-
-      else //Shell Built-Ins & Other defaults
+      else //Shell built-ins & other defaults
       {
         if(!strcmp(v_line[0], "history") || (!strcmp(v_line[0], "HISTORY"))) //History command
         {
           for(int i = run_count; i < 30*loop; i++)
           {
-            fprintf(stderr, "CMD %d: %s\n", i, history[i]);
+            fprintf(stderr, "CMD %d: %s", i, history[i]);
           }
 
           for(int i = 0; i < run_count; i++)
           {
-            fprintf(stderr, "CMD %d: %s\n", i+(30*loop), history[i]);
+            fprintf(stderr, "CMD %d: %s", i+(30*loop), history[i]);
           }
         }
 
@@ -588,12 +612,12 @@ int main()
         {
           for(int i = run_count; i < 30*loop; i++)
           {
-            fprintf(stderr, "CMD %d: %s\n", i, history[i]);
+            fprintf(stderr, "CMD %d: %s", i, history[i]);
           }
 
           for(int i = 0; i < run_count; i++)
           {
-            fprintf(stderr, "CMD %d: %s\n", i+(30*loop), history[i]);
+            fprintf(stderr, "CMD %d: %s", i+(30*loop), history[i]);
           }
           exit(1);
         }
@@ -619,6 +643,14 @@ int main()
           }
         }
 
+        else if(!strcmp(v_line[0], "env") || (!strcmp(v_line[0], "ENV")))
+        {
+          for (int i = 0; envp[i] != NULL; i++)
+          {    
+            printf("%s\n", envp[i]);
+          }
+        }
+
 
         else //Just a normal process
         {
@@ -627,7 +659,7 @@ int main()
           switch(pid = fork()) 
           {
             case 0:
-              execvp(argv_l[0], argv_l);
+              if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
               exit(1);
             
             case -1: fprintf(stderr, "ERROR CAN'T CREATE CHILD PROCESS\n");
@@ -645,16 +677,16 @@ int main()
         }
       } 
 
-      end:
-      fprintf(stderr,"%s",prompt);
+      end: //End of loop
       amp = 0;
       token_count = 0;
-      for(int i = 0; i < 10; i++){ //Clear out argument tags to use again.
+      for(int i = 0; i < 10; i++){ //Clear out argument tags & stdout to use again.
         argv_l[i] = NULL;
         argv_r[i] = NULL;
         strcpy(v_line[i], "");
       }
-    }
+      fprintf(stderr,"%s",prompt);
+    } //Exit on EOF
   exit(0);
 }
 
