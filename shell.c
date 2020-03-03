@@ -76,7 +76,8 @@ int main()
   signal(SIGUSR1, handle_sig);
 
   char *prompt = "B-RADv6> "; //Parsing variables
-  char line[256];
+  char *line;
+  size_t size = 256;
   int token_count = 0;
   int pci;
   int current_tok;
@@ -102,8 +103,12 @@ int main()
   int r_true, r_pipe, r_redir, r_append; //Read variables
 
   fprintf(stderr,"%s",prompt);
-  while ( scanf ("%[^\n]%*c",line) != EOF ) //While-loop for shell
+  while (getline(&line, &size, stdin) != EOF ) //While-loop for shell
     { 
+      if(!strcmp(line, "\n"))
+      {
+        goto end;
+      }
       char v_line[10][256];
       strcpy(history[run_count], line); //History record, max up to 30, circular buffer
       run_count++;
@@ -114,10 +119,10 @@ int main()
       }
 
       char * token = "";
-      strcpy(v_line[0], strtok(line, " ,")); //Scan each line, divvy into tokens
+      strcpy(v_line[0], strtok(line, " \n,")); //Scan each line, divvy into tokens
       while(token != NULL)
       { 
-        token = strtok(NULL, " ,");
+        token = strtok(NULL, " \n,");
         if(token != NULL)
         { 
           if(!strcmp(token, "&"))
@@ -131,7 +136,7 @@ int main()
         }
         token_count++;
       }
-      
+
       //Logic handler of commands
       pci = 0;
       current_tok = 0;
@@ -618,7 +623,7 @@ int main()
         else //Just a normal process
         {
           for(int i = 0; i < token_count; i++){argv_l[i] = v_line[i];} //Assign left arguments
-          argv_l[token_count+1] = NULL;
+          argv_l[token_count] = NULL;
           switch(pid = fork()) 
           {
             case 0:
@@ -638,10 +643,10 @@ int main()
               break;
           }
         }
-      }
+      } 
 
-      fprintf(stderr,"%s",prompt); 
-
+      end:
+      fprintf(stderr,"%s",prompt);
       amp = 0;
       token_count = 0;
       for(int i = 0; i < 10; i++){ //Clear out argument tags to use again.
