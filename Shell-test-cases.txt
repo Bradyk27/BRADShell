@@ -18,7 +18,7 @@
 * jobs 								/* shows what is in the background */
 * ps -x | grep sleep						/* shows the sleep running in the background*/
 * dd if=/dev/zero of=big count=1 bs=200M &  			/* create a HUGE file in the background,  note: rm big  often   */
-*  -sh .							/* how big is the current directory?  it will grow */
+* du -sh .							/* how big is the current directory?  it will grow */
 * history								/* shows the last 10 commands run */
 * cat testfile2 | wc -l						/* should show a 4 for the lines containing z,a,c,j */
 * who | wc -l > users						/* show show how many users are logged into the system in the file */

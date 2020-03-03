@@ -1,23 +1,17 @@
 /*
-TODOS:
-CHECK CITATIONS
-REPORT
-*/
-
-/*
 FOR FUNSIES:
 - Make this thing really powerful. This could be a cool project. Maybe even make a Windows CP Emulator from it.
 - Increase efficiency 10x / general cleanup. There's a better parsing algorithm out there. Use functions instead of this shitty logic if-loop bullshit. I'll let it slide for now, but you're better than that.
 - Up arrow to display history
 - Wait to print stuff so the prompt doesn't get overrun
 - amp error besides the process just not running.
-- Shorten
+- Shorten, cut whitespace
 */
 
 /*
 Brady Kruse
 bak225
-2/2/20 @ 2:36:00AM
+3/3/20 @ 2:36:00AM
 
 Sources:
 1) Redirect Skeleton Code: http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html
@@ -25,6 +19,7 @@ Sources:
 3) General Help from http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html, https://www.geeksforgeeks.org/c-program-demonstrate-fork-and-pipe/, 
    http://www.microhowto.info/howto/capture_the_output_of_a_child_process_in_c.html, http://heapspray.net/post/redirect-stdout-of-child-to-parent-process-in-c/
 4) ENV Command from https://www.sanfoundry.com/c-program-environment-variable/
+5) General other info from geeksforgeeks & Stack Overflow & man7 (like any good programmer)
 */
 
 #include <stdio.h> //All necessary libraries
@@ -149,7 +144,7 @@ int main(int argc, char* argv[], char* envp[])
         if(!strncmp(v_line[current_tok], "|", 256)) //Found a pipe
         {
 
-          if(!strncmp(v_line[current_tok+1], "", 256)) //Error Check
+          if(!strncmp(v_line[current_tok+1], "", 256) || (!strncmp(v_line[current_tok-1], "", 256))) //Error Check
           {
             fprintf(stderr, "INVALID PIPE COMMAND\n");
             goto end;
@@ -332,7 +327,7 @@ int main(int argc, char* argv[], char* envp[])
             close(p[0]); //no need to read, just writes to its pipe.
             dup2(p[1], STDOUT_FILENO);
             close(p[1]);
-            if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "LEFT COMMAND NOT FOUND\n");goto end;}
+            if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "LEFT COMMAND NOT FOUND\n");}
             exit(1);
 
           case -1: fprintf(stderr, "ERROR CAN'T CREATE CHILD PROCESS\n");
@@ -395,7 +390,7 @@ int main(int argc, char* argv[], char* envp[])
              out = open(redir_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //Open output file
              dup2(out, STDOUT_FILENO);
              close(out);
-             if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
+             if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");}
              exit(1);
              break;
 
@@ -421,7 +416,7 @@ int main(int argc, char* argv[], char* envp[])
              out = open(redir_file, O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR); //Same as redirect, different permissions
              dup2(out, STDOUT_FILENO);
              close(out);
-             if(execvp(argv_l[0] , argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
+             if(execvp(argv_l[0] , argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");}
              exit(1);
              break;
 
@@ -457,7 +452,7 @@ int main(int argc, char* argv[], char* envp[])
               close(p[0]); //no need to read, just writes to its pipe.
               dup2(p[1], STDOUT_FILENO);
               close(p[1]);
-              if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
+              if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");}
               exit(1);
 
             case -1: fprintf(stderr, "ERROR CAN'T CREATE CHILD PROCESS\n");
@@ -488,7 +483,7 @@ int main(int argc, char* argv[], char* envp[])
                 dup2(out, STDOUT_FILENO);
                 close(out);
               }
-              if(execvp(argv_r[0], argv_r) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
+              if(execvp(argv_r[0], argv_r) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");}
               exit(1);
 
             case -1: fprintf(stderr, "ERROR can't create child process\n");
@@ -521,7 +516,7 @@ int main(int argc, char* argv[], char* envp[])
                 dup2(out, STDOUT_FILENO);
                 close(in);
                 close(out);
-                if(execvp(argv_l[0] , argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
+                if(execvp(argv_l[0] , argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");}
                 break;
               
               case -1: fprintf(stderr,"ERROR can't create child process!\n");
@@ -549,7 +544,7 @@ int main(int argc, char* argv[], char* envp[])
                 dup2(out, STDOUT_FILENO);
                 close(in);
                 close(out);
-                if(execvp(argv_l[0] , argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
+                if(execvp(argv_l[0] , argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");}
                 break;
               
               case -1: fprintf(stderr,"ERROR can't create child process!\n");
@@ -574,7 +569,7 @@ int main(int argc, char* argv[], char* envp[])
                 in = open(read_file, O_RDONLY);
                 dup2(in, STDIN_FILENO);
                 close(in);
-                if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
+                if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");}
                 exit(1);
                 break;
 
@@ -659,7 +654,7 @@ int main(int argc, char* argv[], char* envp[])
           switch(pid = fork()) 
           {
             case 0:
-              if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");goto end;}
+              if(execvp(argv_l[0], argv_l) == -1){fprintf(stderr, "COMMAND NOT FOUND\n");}
               exit(1);
             
             case -1: fprintf(stderr, "ERROR CAN'T CREATE CHILD PROCESS\n");

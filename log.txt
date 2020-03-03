@@ -1,4 +1,0 @@
-CMD 0: brady
-CMD 1: is
-CMD 2: cool
-CMD 3: history
